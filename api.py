@@ -52,11 +52,6 @@ class Token(Base):
     token = db.Column(db.String(128))
     ipaddr = db.Column(db.String(16))
 
-    def __init__(self):
-        self.token = ''
-        db.session.commit()
-
-
     def generate(self):
         salt = 'Hy7XXxjhsKSUjem993kSjQQaWslfcuUhSDHgu8S=='
         self.token = password_context.encrypt(
