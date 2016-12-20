@@ -138,6 +138,11 @@ class ApiLog(Base):
     def __init__(self, level, msg):
         self.log_level = level
         self.log_message = msg
+        self.execute()
+
+    def execute(self):
+        db.session.add(self)
+        db.session.commit()
 
 # Routes
 # Default route, provide basic usage
@@ -191,7 +196,6 @@ def function_usage(func_name=None):
         return jsonify(payload)
 
 # API User Functions
-
 @api.route('/users/', methods=['GET'])
 def users():
     """ User authentication, registration, and other requests """
@@ -249,36 +253,35 @@ def register_user():
 
     return jsonify({'username':u.username,'action':'register','result':True})
 
-@api.route('/login',methods=['GET'])
-def login_details():
+@api.route('/login',methods=['GET','POST'])
+def do_login():
     """ User login portal - POST credentials for an API token {username,password} """
-    return function_usage('login_details')
+    if request.method != 'POST':
+        return function_usage('login_details')
+    else:
+    # Registers an API token which expires in 24 hours
+        required_attributes = 'username','password'
 
-@api.route('/login',methods=['POST'])
-def do_logon():
-    """ Registers an API token which expires in 24 hours """
-    required_attributes = 'username','password'
+        if not request.json or not all([j in request.json for j in required_attributes]):
+            if not request.json:
+                missing='No data received'
+            else:
+                missing=[]
+                for attr in required_attributes:
+                    if attr not in request.json:
+                        missing.append(attr)
 
-    if not request.json or not all([j in request.json for j in required_attributes]):
-        if not request.json:
-            missing='No data received'
-        else:
-            missing=[]
-            for attr in required_attributes:
-                if attr not in request.json:
-                    missing.append(attr)
-
-        return make_response(jsonify({'error':{
+            return make_response(jsonify({'error':{
                             'message':'Missing value(s) in POST data',
-                            'value':'{}'.format(missing)
+                            'value(s)':'{}'.format(missing)
                             }}), 400)
 
-    u = User.query.filter_by(username=request.json.get('username')).first()
-    if u is None:
-        abort(404)
-        return
-    else:
-        return jsonify(u.do_logon(request.json.get('password')))
+        u = User.query.filter_by(username=request.json.get('username')).first()
+        if u is None:
+            abort(404)
+            return
+        else:
+            return jsonify(u.do_logon(request.json.get('password')))
 
 # Error Responses
 @api.errorhandler(400)
